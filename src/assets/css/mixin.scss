@@ -1,0 +1,30 @@
+$theme: #3190e8;
+$background: #F5F5F5;
+
+@mixin size($width: null,$height: null) {
+    width: $width;
+    height: $height;
+}
+
+@mixin absolute($left:null,$top:null,$right:null,$bottom:null) {
+    position: absolute;
+    left: $left;
+    top: $top;
+    right: $right;
+    bottom: $bottom;
+}
+
+@mixin fixed($left:null,$top:null,$right:null,$bottom:null) {
+    position: fixed;
+    left: $left;
+    top: $top;
+    right: $right;
+    bottom: $bottom;
+}
+
+@mixin flex($direction:null,$justify:null,$align:null) {
+    display: flex;
+    flex-direction: $direction;
+    justify-content: $justify;
+    align-items: $align;
+}
