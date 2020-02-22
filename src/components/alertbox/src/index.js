@@ -6,7 +6,7 @@ const defaults = {
     type: 'warning',
     content: '提示内容',
     show: false,
-    duration: '2000'
+    duration: 2000
 };
 
 // 构建子类
@@ -40,8 +40,8 @@ export default function (option = {}) {
     let instance = new AlertBoxConstructor({
         // 挂在内存中新建的一个空div元素中
         el: document.createElement('div'),
-        // 创建实例时用的数据
-        data: option
+        // 创建实例时传入的props
+        propsData: option
     });
     // $el子类实例使用的根DOM元素
     body.appendChild(instance.$el);

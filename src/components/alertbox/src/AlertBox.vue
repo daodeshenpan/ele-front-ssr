@@ -11,7 +11,12 @@
 
 <script>
     export default {
-        name: "AlertBox"
+        name: "AlertBox",
+        props: {
+            show: Boolean,
+            type: String,
+            content: String
+        }
     }
 </script>
 

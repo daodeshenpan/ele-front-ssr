@@ -49,14 +49,14 @@
     "js/Shop.806ea583.js",
     "js/ShopCategory.ea5f82be.js",
     "js/ShopDetail.750234ae.js",
-    "js/main.d042cec1.js",
+    "js/main.5016cafc.js",
     "js/vendors.70fb0bef.js"
   ],
   "initial": [
     "css/vendors.4c5952ee.css",
     "js/vendors.70fb0bef.js",
     "css/main.0f8c18f3.css",
-    "js/main.d042cec1.js"
+    "js/main.5016cafc.js"
   ],
   "async": [
     "css/AddNote.f527af79.css",
