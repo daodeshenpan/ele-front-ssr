@@ -1,10 +1,17 @@
 let startTime = 0, isMove = false;
 let startX = 0, deltaX = 0, startY = 0, deltaY = 0;
+let durationStep = 50;
+let deltaXArray = [0], deltaYArray = [0], durationIndex = 0;
+
 let tapEvent = new Event('tap');
 let swipeEvent = new Event('swipe');
 let swipeendEvent = new Event('swipeend');
 
-window.addEventListener('touchstart', (e) => {
+document.addEventListener('touchstart', (e) => {
+    // reassign
+    startTime = 0, isMove = false;
+    startX = 0, deltaX = 0, startY = 0, deltaY = 0;
+    deltaXArray.length = 1, deltaYArray.length = 1 , durationIndex = 0;
     // tap
     startTime = Date.now();
     // swipe
@@ -12,35 +19,34 @@ window.addEventListener('touchstart', (e) => {
     startY = e.touches[0].clientY;
 });
 
-window.addEventListener('touchmove', (e) => {
-    let touchTime = Date.now() - startTime;
+document.addEventListener('touchmove', (e) => {
+    let durationTime = Date.now() - startTime;
     // tap
     isMove = true;
     // swipe
     deltaX = e.touches[0].clientX - startX;
     deltaY = e.touches[0].clientY - startY;
+    if (durationTime > durationStep * (durationIndex + 1)) {
+        deltaXArray.push(deltaX);
+        deltaYArray.push(deltaY);
+        durationIndex++;
+    }
     swipeEvent.$touches = e.touches;
     swipeEvent.$target = e.target;
     swipeEvent.$deltaX = deltaX;
     swipeEvent.$deltaY = deltaY;
-    swipeEvent.$velocityX = deltaX / touchTime * 1000;
-    swipeEvent.$velocityY = deltaY / touchTime * 1000;
-    let element = e.target;
-    do {
-        element.dispatchEvent(swipeEvent);
-    } while ((element = element.parentElement));
+    swipeEvent.$velocityX = (deltaX - deltaXArray[durationIndex]) / (durationTime - durationIndex * durationStep) * 1000;
+    swipeEvent.$velocityY = (deltaY - deltaYArray[durationIndex]) / (durationTime - durationIndex * durationStep) * 1000;
+    dispatchBubbleEvent(e.target, swipeEvent);
 });
 
-window.addEventListener('touchend', (e) => {
-    let touchTime = Date.now() - startTime;
+document.addEventListener('touchend', (e) => {
+    let durationTime = Date.now() - startTime;
     // tap
-    if (touchTime < 200 && !isMove) {
+    if (durationTime < 200 && !isMove) {
         tapEvent.$touches = e.changedTouches;
         tapEvent.$target = e.target;
-        let element = e.target;
-        do {
-            element.dispatchEvent(tapEvent);
-        } while ((element = element.parentElement));
+        dispatchBubbleEvent(e.target, tapEvent);
     }
     // swipeend
     if (isMove) {
@@ -48,15 +54,25 @@ window.addEventListener('touchend', (e) => {
         swipeendEvent.$target = e.target;
         swipeendEvent.$deltaX = deltaX;
         swipeendEvent.$deltaY = deltaY;
-        swipeendEvent.$velocityX = deltaX / touchTime * 1000;
-        swipeendEvent.$velocityY = deltaY / touchTime * 1000;
-        let element = e.target;
-        do {
-            element.dispatchEvent(swipeendEvent);
-        } while ((element = element.parentElement));
+
+        if (durationTime - durationIndex * durationStep <= durationStep) {
+            swipeendEvent.$velocityX = (deltaX - deltaXArray[durationIndex]) / (durationTime - durationIndex * durationStep) * 1000;
+            swipeendEvent.$velocityY = (deltaY - deltaYArray[durationIndex]) / (durationTime - durationIndex * durationStep) * 1000;
+        } else {
+            swipeendEvent.$velocityX = 0;
+            swipeendEvent.$velocityY = 0;
+        }
+
+        dispatchBubbleEvent(e.target, swipeendEvent);
     }
-    // tap
+    // reassign
     startTime = 0, isMove = false;
-    // swipe
-    startX = 0, deltaX = 0,startY = 0,deltaY = 0;
+    startX = 0, deltaX = 0, startY = 0, deltaY = 0;
+    deltaXArray.length = 1, deltaYArray.length = 1 , durationIndex = 0;
 });
+
+function dispatchBubbleEvent(element, event) {
+    do {
+        element.dispatchEvent(event);
+    } while ((element = element.parentElement));
+}

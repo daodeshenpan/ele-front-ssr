@@ -53,39 +53,47 @@
                                     </span>
                             </li>
                         </ul>
-                        <ul class="menu-main-content" ref="main" @swipeend="onSwipeend">
-                            <li v-for="(item,index) in shopMenu" :key="index">
-                                <header>
-                                    <b>{{item.name}}</b>
-                                    <span>{{item.description}}</span>
-                                </header>
-                                <section v-for="(food,index) of item.foods">
-                                    <div @tap="$router.push(`/foodDetail?image_path=${food.image_path}&name=${food.name}&description=${food.description}&month_sales=${food.month_sales}&satisfy_rate=${food.satisfy_rate}&rating=${food.rating}`)">
-                                        <img :src="imgBaseURL + food.image_path" alt="">
-                                        <div>
-                                            <h4>{{food.name}}</h4>
-                                            <p>{{food.description}}</p>
-                                            <p>
-                                                <span>月售{{food.month_sales}}份</span>&nbsp;<span>好评率{{food.satisfy_rate}}%</span>
-                                            </p>
-                                            <p v-if="food.activity">
-                                                <span :style="{color: '#' + food.activity.image_text_color,borderColor:'#' +food.activity.icon_color}">{{food.activity.image_text}}</span>
-                                            </p>
+                        <div class="menu-main-content-wrap"
+                             ref="wrap"
+                             @touchstart="handleMenuContentTouchstart"
+                             @swipe="handleMenuContentSwipe"
+                             @swipeend="handleMenuContentSwipeend">
+                            <ul class="menu-main-content"
+                                ref="main"
+                                style="transform: translateY(0)">
+                                <li v-for="(item,index) in shopMenu" :key="index">
+                                    <header>
+                                        <b>{{item.name}}</b>
+                                        <span>{{item.description}}</span>
+                                    </header>
+                                    <section v-for="(food,index) of item.foods">
+                                        <div @tap="$router.push(`/foodDetail?image_path=${food.image_path}&name=${food.name}&description=${food.description}&month_sales=${food.month_sales}&satisfy_rate=${food.satisfy_rate}&rating=${food.rating}`)">
+                                            <img :src="imgBaseURL + food.image_path" alt="">
+                                            <div>
+                                                <h4>{{food.name}}</h4>
+                                                <p>{{food.description}}</p>
+                                                <p>
+                                                    <span>月售{{food.month_sales}}份</span>&nbsp;<span>好评率{{food.satisfy_rate}}%</span>
+                                                </p>
+                                                <p v-if="food.activity">
+                                                    <span :style="{color: '#' + food.activity.image_text_color,borderColor:'#' +food.activity.icon_color}">{{food.activity.image_text}}</span>
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <footer>
-                                        <div>
-                                            <span>¥</span>
-                                            <span>{{food.specfoods[0].price}}</span>
-                                        </div>
-                                        <food-counter :food="food"
-                                                      :shopping-cart-position="shoppingCartPosition"
-                                                      @bounce="bounce"
-                                                      :animate="true"/>
-                                    </footer>
-                                </section>
-                            </li>
-                        </ul>
+                                        <footer>
+                                            <div>
+                                                <span>¥</span>
+                                                <span>{{food.specfoods[0].price}}</span>
+                                            </div>
+                                            <food-counter :food="food"
+                                                          :shopping-cart-position="shoppingCartPosition"
+                                                          @bounce="bounce"
+                                                          :animate="true"/>
+                                        </footer>
+                                    </section>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="shopping-cart">
                         <div class="cart-icon" ref="cart" :class="{empty:totalAmount === 0}"
@@ -188,7 +196,7 @@
 
 <script>
     import {mapState} from 'vuex'
-    import {getLocalStorage, setLocalStorage, addBufferMotion, accumulateOffsetTop} from '@/utils/myUtils'
+    import {getLocalStorage, setLocalStorage, accumulateOffsetTop} from '@/utils/myUtils'
     import {imgBaseURL, imgCDN} from '@/utils/config'
     import FoodCounter from '@/components/FoodCounter'
     import LoadingIcon from '@/components/LoadingIcon'
@@ -207,9 +215,9 @@
                 tab: 'menu',
                 showActivityDetail: false,
                 menuSelected: 0,
-                maxIndex: -1,
                 showCartPanel: false,
-                shoppingCartPosition: {}
+                shoppingCartPosition: {},
+                lastTranslateY: 0
             }
         },
         computed: {
@@ -287,27 +295,17 @@
         deactivated() {
             this.tab = 'menu';
             this.menuSelected = 0;
-            this.maxIndex = -1;
             setLocalStorage('cartHistory', this.cart);
         },
         updated() {
             // 确保可以拿到$refs
-            // 计算可以滑动的最后一个序号
-            let main = this.$refs.main;
             let cart = this.$refs.cart;
-            // 只算一次
-            if (main && cart && this.maxIndex < 0) {
-                for (let i = main.children.length - 1; i >= 0; i--) {
-                    if (main.scrollHeight - main.children[i].offsetTop >= main.clientHeight) {
-                        this.maxIndex = i;
-                        break;
-                    }
-                }
-
+            if (cart && !this.shoppingCartPosition.x) {
+                // 只算一次
                 this.shoppingCartPosition = {
                     x: parseInt(window.getComputedStyle(cart).left) + cart.offsetWidth / 2,
                     y: accumulateOffsetTop(cart) + cart.offsetHeight / 2
-                }
+                };
             }
         },
         methods: {
@@ -325,35 +323,109 @@
                     store.dispatch('fetchShopScore', id),
                     store.dispatch('fetchShopTag', id)]);
             },
+            translateXAnimated(element, x) {
+                element.style.transition = `transform .3s cubic-bezier(.23, 1, .32, 1)`;
+                element.style.transform = `translateX(${x})`;
+                element.addEventListener('transitionend', () => {
+                    element.style.transition = ``;
+                }, {once: true})
+            },
+            translateY(element, y) {
+                element.style.transition = ``;
+                element.style.transform = `translateY(${y})`;
+            },
+            translateYAnimated(element, y, duration, callback) {
+                element.style.transition = `transform ${duration} cubic-bezier(.23, 1, .32, 1)`;
+                element.style.transform = `translateY(${y})`;
+                element.addEventListener('transitionend', () => {
+                    element.style.transition = ``;
+                    callback && callback();
+                }, {once: true})
+            },
             handleTap(index) {
-                this.isTapScroll = true;
+                let wrap = this.$refs.wrap;
                 let main = this.$refs.main;
-                this.menuSelected = index;
+                let mainMinTranslateY = parseInt(window.getComputedStyle(wrap).height) - parseInt(window.getComputedStyle(main).height);
+                let translateYRegExp = /translateY\((.*)\)/;
 
-                if (index <= this.maxIndex) {
-                    addBufferMotion(main, {scrollTop: main.children[index].offsetTop}, 0.1, 10);
-                } else {
-                    addBufferMotion(main, {scrollTop: main.scrollHeight - main.offsetHeight}, 0.1, 10);
+                this.menuSelected = index;
+                this.translateYAnimated(main, -main.children[index].offsetTop + 'px', '.3s', () => {
+                    let translateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
+                    // 边界处理
+                    if (translateY < mainMinTranslateY) {
+                        this.translateYAnimated(main, mainMinTranslateY + 'px', '.3s');
+                    }
+                });
+            },
+            handleMenuContentTouchstart() {
+                let main = this.$refs.main;
+                let translateYRegExp = /translateY\((.*)\)/;
+                this.lastTranslateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
+            },
+            handleMenuContentSwipe(e) {
+                let wrap = this.$refs.wrap;
+                let main = this.$refs.main;
+                let mainMinTranslateY = parseInt(window.getComputedStyle(wrap).height) - parseInt(window.getComputedStyle(main).height);
+                let destination = this.lastTranslateY + e.$deltaY;
+                let swipeAngle = Math.abs(e.$deltaY / e.$deltaX);
+
+                if (swipeAngle > Math.abs(Math.tan(Math.PI / 3))) {
+                    if (destination > 0) {
+                        this.translateY(main, 0);
+                    } else if (destination < mainMinTranslateY) {
+                        this.translateY(main, mainMinTranslateY + 'px');
+                    } else {
+                        // 滑动起点与终点的连线和x轴的角度大于60度，则变换y轴位移
+                        this.translateY(main, destination + 'px');
+                    }
+                }
+
+                let translateYRegExp = /translateY\((.*)\)/;
+                let translateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
+                // 更新index
+                for (let i = 0, len = main.children.length; i < len; i++) {
+                    if (Math.abs(translateY) >= main.children[i].offsetTop && Math.abs(translateY) < (main.children[i + 1] ? main.children[i + 1].offsetTop : Infinity)) {
+                        this.menuSelected = i;
+                    }
                 }
             },
-            onSwipeend() {
+            handleMenuContentSwipeend(e) {
+                let wrap = this.$refs.wrap;
                 let main = this.$refs.main;
-                // 记录停止滑动时的scrollTop
-                let touchendScrollTop = main.scrollTop;
-                // 浏览器下一次重流时执行，执行完才会进行下一次重绘
-                let requestFrame = requestAnimationFrame(() => {
-                    if (main.scrollTop !== touchendScrollTop) {
-                        // 没有停下
-                        this.onSwipeend();
-                    } else {
-                        // 停下了
+                let mainMinTranslateY = parseInt(window.getComputedStyle(wrap).height) - parseInt(window.getComputedStyle(main).height);
+                let translateYRegExp = /translateY\((.*)\)/;
+                let translateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
+                let destination = translateY + e.$velocityY;
+
+                // 模拟惯性
+                if (destination > 0) {
+                    this.translateYAnimated(main, 0, '1s', () => {
+                        let translateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
                         for (let i = 0, len = main.children.length; i < len; i++) {
-                            if (main.scrollTop >= main.children[i].offsetTop && main.scrollTop < main.children[i + 1].offsetTop) {
+                            if (Math.abs(translateY) >= main.children[i].offsetTop && Math.abs(translateY) < (main.children[i + 1] ? main.children[i + 1].offsetTop : Infinity)) {
                                 this.menuSelected = i;
                             }
                         }
-                    }
-                })
+                    });
+                } else if (destination < mainMinTranslateY) {
+                    this.translateYAnimated(main, mainMinTranslateY + 'px', '1s', () => {
+                        let translateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
+                        for (let i = 0, len = main.children.length; i < len; i++) {
+                            if (Math.abs(translateY) >= main.children[i].offsetTop && Math.abs(translateY) < (main.children[i + 1] ? main.children[i + 1].offsetTop : Infinity)) {
+                                this.menuSelected = i;
+                            }
+                        }
+                    });
+                } else {
+                    this.translateYAnimated(main, destination + 'px', '1s', () => {
+                        let translateY = parseInt(main.style.transform.match(translateYRegExp)[1]);
+                        for (let i = 0, len = main.children.length; i < len; i++) {
+                            if (Math.abs(translateY) >= main.children[i].offsetTop && Math.abs(translateY) < (main.children[i + 1] ? main.children[i + 1].offsetTop : Infinity)) {
+                                this.menuSelected = i;
+                            }
+                        }
+                    });
+                }
             },
             bounce() {
                 let cart = this.$refs.cart;
@@ -384,28 +456,23 @@
                     this.translateXAnimated(comment, '0');
                 }
             },
-            translateXAnimated(element, x) {
-                element.style.transition = `transform .3s cubic-bezier(.23, 1, .32, 1)`;
-                element.style.transform = `translateX(${x})`;
-                element.addEventListener('transitionend', () => {
-                    element.style.transition = ``;
-                }, {once: true})
-            },
             handleSwipe(e, tab) {
                 let menu = this.$refs.menu, comment = this.$refs.comment;
                 let span = this.$refs.span, underline = this.$refs.underline;
                 let menuWidth = parseInt(window.getComputedStyle(menu).width),
                     commentWidth = parseInt(window.getComputedStyle(comment).width);
                 let underlineMaxDisplacement = parseFloat(window.getComputedStyle(span).width) + parseFloat(window.getComputedStyle(span).marginRight) * 2;
+                let swipeAngleTangent = Math.abs(e.$deltaY / e.$deltaX);
+
                 if (tab === 'menu') {
-                    if (Math.abs(e.$deltaY) / Math.abs(e.$deltaX) < Math.tan(Math.PI / 6)) {
+                    if (e.$deltaX < 0 && swipeAngleTangent < Math.abs(Math.tan(Math.PI / 6))) {
                         // 滑动起点与终点的连线和x轴的角度小于30度，则变换x轴位移
                         menu.style.transform = `translateX(${e.$deltaX}px)`;
                         underline.style.transform = `translateX(${-e.$deltaX / 4}px)`;
                         comment.style.transform = `translateX(${commentWidth + e.$deltaX}px)`;
                     }
                 } else {
-                    if (Math.abs(e.$deltaY) / Math.abs(e.$deltaX) < Math.tan(Math.PI / 6)) {
+                    if (e.$deltaX > 0 && swipeAngleTangent < Math.abs(Math.tan(Math.PI / 6))) {
                         menu.style.transform = `translateX(${-menuWidth + e.$deltaX}px)`;
                         underline.style.transform = `translateX(${underlineMaxDisplacement - e.$deltaX / 4}px)`;
                         comment.style.transform = `translateX(${e.$deltaX}px)`;
@@ -415,21 +482,20 @@
             handleSwipeend(e, tab) {
                 let menu = this.$refs.menu, comment = this.$refs.comment;
                 let span = this.$refs.span, underline = this.$refs.underline;
-                let translateXRegExp = /translateX\((.*)\)/;
                 let menuWidth = parseInt(window.getComputedStyle(menu).width),
                     commentWidth = parseInt(window.getComputedStyle(comment).width);
                 let underlineMaxDisplacement = parseFloat(window.getComputedStyle(span).width) + parseFloat(window.getComputedStyle(span).marginRight) * 2;
+                let swipeAngleTangent = Math.abs(e.$deltaY / e.$deltaX);
+                let translateXRegExp = /translateX\((.*)\)/;
+
                 if (tab === 'menu') {
-                    if (e.$velocityX < -400 && Math.abs(e.$deltaY) / Math.abs(e.$deltaX) < Math.tan(Math.PI / 6)) {
-                        // 如果速度大于400，且滑动起点与终点的连线和x轴的角度小于30度，则直接划过
+                    if (e.$velocityX < -1 && swipeAngleTangent < Math.abs(Math.tan(Math.PI / 6))) {
+                        // 如果速度大于1，且滑动起点与终点的连线和x轴的角度小于30度，则直接划过
                         this.tab = 'comment';
                         this.translateXAnimated(menu, '-100%'), this.translateXAnimated(underline, underlineMaxDisplacement + 'px'), this.translateXAnimated(comment, '0');
                     } else {
-                        // 速度小于400
                         let translateX = parseInt(menu.style.transform.match(translateXRegExp)[1]);
-                        if (translateX > 0) {
-                            this.translateXAnimated(menu, '0'), this.translateXAnimated(underline, '0'), this.translateXAnimated(comment, '100%');
-                        } else if (Math.abs(translateX) < menuWidth * 2 / 3) {
+                        if (Math.abs(translateX) < menuWidth * 2 / 3) {
                             this.translateXAnimated(menu, '0'), this.translateXAnimated(underline, '0'), this.translateXAnimated(comment, '100%');
                         } else if (Math.abs(translateX) > menuWidth * 2 / 3) {
                             this.tab = 'comment';
@@ -437,14 +503,12 @@
                         }
                     }
                 } else {
-                    if (e.$velocityX > 400 && Math.abs(e.$deltaY) / Math.abs(e.$deltaX) < Math.tan(Math.PI / 6)) {
+                    if (e.$velocityX > 1 && swipeAngleTangent < Math.abs(Math.tan(Math.PI / 6))) {
                         this.tab = 'menu';
                         this.translateXAnimated(menu, '0'), this.translateXAnimated(underline, '0'), this.translateXAnimated(comment, '100%');
                     } else {
                         let translateX = parseInt(comment.style.transform.match(translateXRegExp)[1]);
-                        if (translateX < 0) {
-                            this.translateXAnimated(menu, '-100%'), this.translateXAnimated(underline, underlineMaxDisplacement + 'px'), this.translateXAnimated(comment, '0');
-                        } else if (translateX < commentWidth * 2 / 3) {
+                        if (translateX < commentWidth * 2 / 3) {
                             this.translateXAnimated(menu, '-100%'), this.translateXAnimated(underline, underlineMaxDisplacement + 'px'), this.translateXAnimated(comment, '0');
                         } else if (translateX > commentWidth * 2 / 3) {
                             this.tab = 'menu';
@@ -617,7 +681,7 @@
 
                         .menu-main-title {
                             @include size(3.8rem, 100%);
-                            overflow-y: auto;
+                            overflow: hidden;
 
                             li {
                                 padding: .7rem .3rem;
@@ -638,98 +702,101 @@
                             }
                         }
 
-                        .menu-main-content {
+                        .menu-main-content-wrap {
                             flex: 1;
-                            overflow-y: auto;
-                            position: relative;
+                            overflow: hidden;
 
-                            li header {
-                                @include flex(row, space-between, center);
-                                padding: .4rem;
+                            .menu-main-content {
                                 position: relative;
 
-                                b {
-                                    font-size: 0.7rem;
-                                    color: #666;
-                                    font-weight: bold;
-                                }
+                                li header {
+                                    @include flex(row, space-between, center);
+                                    padding: .4rem;
+                                    position: relative;
 
-                                span {
-                                    @include size(30%);
-                                    font-size: 0.5rem;
-                                    color: #999;
-                                    overflow: hidden;
-                                }
-                            }
-
-                            li section {
-                                background-color: #fff;
-                                padding: .6rem .4rem;
-                                border-bottom: 1px solid #f8f8f8;
-                                position: relative;
-
-                                > div {
-                                    @include flex();
-
-                                    img {
-                                        @include size(2rem, 2rem);
-                                        margin-right: .4rem;
-                                        display: block;
+                                    b {
+                                        font-size: 0.7rem;
+                                        color: #666;
+                                        font-weight: bold;
                                     }
+
+                                    span {
+                                        @include size(30%);
+                                        font-size: 0.5rem;
+                                        color: #999;
+                                        overflow: hidden;
+                                    }
+                                }
+
+                                li section {
+                                    background-color: #fff;
+                                    padding: .6rem .4rem;
+                                    border-bottom: 1px solid #f8f8f8;
+                                    position: relative;
 
                                     > div {
-                                        h4 {
-                                            font-size: 0.7rem;
-                                            color: #333;
-                                            margin-bottom: .2rem;
+                                        @include flex();
+
+                                        img {
+                                            @include size(2rem, 2rem);
+                                            margin-right: .4rem;
+                                            display: block;
                                         }
 
-                                        p:first-of-type {
-                                            font-size: 0.5rem;
-                                            color: #999;
-                                            line-height: .6rem;
-                                        }
-
-                                        p:nth-of-type(2) {
-                                            line-height: .8rem;
-
-                                            span {
-                                                font-size: 0.5rem;
+                                        > div {
+                                            h4 {
+                                                font-size: 0.7rem;
                                                 color: #333;
+                                                margin-bottom: .2rem;
                                             }
-                                        }
 
-                                        p:nth-of-type(3) {
-                                            line-height: .4rem;
+                                            p:first-of-type {
+                                                font-size: 0.5rem;
+                                                color: #999;
+                                                line-height: .6rem;
+                                            }
 
-                                            span {
-                                                font-size: .3rem;
-                                                border: 1px solid currentColor;
-                                                border-radius: 0.3rem;
-                                                padding: .08rem;
-                                                display: inline-block;
+                                            p:nth-of-type(2) {
+                                                line-height: .8rem;
+
+                                                span {
+                                                    font-size: 0.5rem;
+                                                    color: #333;
+                                                }
+                                            }
+
+                                            p:nth-of-type(3) {
+                                                line-height: .4rem;
+
+                                                span {
+                                                    font-size: .3rem;
+                                                    border: 1px solid currentColor;
+                                                    border-radius: 0.3rem;
+                                                    padding: .08rem;
+                                                    display: inline-block;
+                                                }
                                             }
                                         }
                                     }
-                                }
 
-                                footer {
-                                    @include flex(row, space-between);
-                                    margin-left: 2.4rem;
-                                    font-size: 0;
-                                    margin-top: .3rem;
+                                    footer {
+                                        @include flex(row, space-between);
+                                        margin-left: 2.4rem;
+                                        font-size: 0;
+                                        margin-top: .3rem;
 
-                                    span:first-of-type {
-                                        font-size: 0.5rem;
-                                        color: #f60;
-                                        margin-right: .05rem;
-                                    }
+                                        span:first-of-type {
+                                            font-size: 0.5rem;
+                                            color: #f60;
+                                            margin-right: .05rem;
+                                        }
 
-                                    span:nth-of-type(2) {
-                                        font-size: 0.7rem;
-                                        color: #f60;
-                                        font-weight: bold;
-                                        margin-right: .3rem;
+                                        span:nth-of-type(2) {
+                                            font-size: 0.7rem;
+                                            color: #f60;
+                                            font-weight: bold;
+                                            margin-right: .3rem;
+                                        }
                                     }
                                 }
                             }
