@@ -3,8 +3,6 @@ import VueRouter from 'vue-router'
 
 Vue.use(VueRouter);
 
-import Locate from '@/views/Locate'
-
 export function createRouter() {
     return new VueRouter({
         mode: 'history',
@@ -15,7 +13,7 @@ export function createRouter() {
             },
             {
                 path: '/locate',
-                component: Locate,
+                component: () => import(/*webpackChunkName: "Locate"*/'@/views/Locate'),
                 meta: {
                     fullPage: true,
                     transitionName: 'slide-to-right'
