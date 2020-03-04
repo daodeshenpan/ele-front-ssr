@@ -24,7 +24,7 @@
     "css/Shop.18cf42b8.css",
     "css/ShopCategory.e0ecca32.css",
     "css/ShopDetail.935d9bf3.css",
-    "css/main.c0780f6b.css",
+    "css/main.8fe72c22.css",
     "css/vendors.4c5952ee.css",
     "font/element-icons.535877f5.woff",
     "font/element-icons.732389de.ttf",
@@ -51,14 +51,14 @@
     "js/Shop.be0d6a45.js",
     "js/ShopCategory.04e7f0a8.js",
     "js/ShopDetail.2a4fc5f5.js",
-    "js/main.86fc733e.js",
+    "js/main.0a199812.js",
     "js/vendors.5c0f12fb.js"
   ],
   "initial": [
     "css/vendors.4c5952ee.css",
     "js/vendors.5c0f12fb.js",
-    "css/main.c0780f6b.css",
-    "js/main.86fc733e.js"
+    "css/main.8fe72c22.css",
+    "js/main.0a199812.js"
   ],
   "async": [
     "css/AddNote.cb79e5b4.css",

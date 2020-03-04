@@ -1,6 +1,6 @@
 let startTime = 0, isMove = false;
 let startX = 0, deltaX = 0, startY = 0, deltaY = 0;
-let durationStep = 50;
+let durationStep = 200;
 let deltaXArray = [0], deltaYArray = [0], durationIndex = 0;
 
 let tapEvent = new Event('tap');
@@ -17,7 +17,7 @@ document.addEventListener('touchstart', (e) => {
     // swipe
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-});
+}, {passive: true});
 
 document.addEventListener('touchmove', (e) => {
     let durationTime = Date.now() - startTime;
@@ -38,12 +38,12 @@ document.addEventListener('touchmove', (e) => {
     swipeEvent.$velocityX = (deltaX - deltaXArray[durationIndex]) / (durationTime - durationIndex * durationStep) * 1000;
     swipeEvent.$velocityY = (deltaY - deltaYArray[durationIndex]) / (durationTime - durationIndex * durationStep) * 1000;
     dispatchBubbleEvent(e.target, swipeEvent);
-});
+}, {passive: true});
 
 document.addEventListener('touchend', (e) => {
     let durationTime = Date.now() - startTime;
     // tap
-    if (durationTime < 200 && !isMove) {
+    if (durationTime < durationStep && !isMove) {
         tapEvent.$touches = e.changedTouches;
         tapEvent.$target = e.target;
         dispatchBubbleEvent(e.target, tapEvent);
@@ -69,7 +69,7 @@ document.addEventListener('touchend', (e) => {
     startTime = 0, isMove = false;
     startX = 0, deltaX = 0, startY = 0, deltaY = 0;
     deltaXArray.length = 1, deltaYArray.length = 1 , durationIndex = 0;
-});
+}, {passive: true});
 
 function dispatchBubbleEvent(element, event) {
     do {

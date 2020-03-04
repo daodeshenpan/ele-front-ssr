@@ -32,6 +32,10 @@
         @include size(100%, 100%);
     }
 
+    body{
+        overflow: hidden;
+    }
+
     #app {
         background-color: $background;
     }
